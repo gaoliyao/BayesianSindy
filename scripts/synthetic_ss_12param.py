@@ -1,10 +1,10 @@
+from theano import tensor as T
 import pymc3 as pm
 import numpy as np
 import matplotlib.pyplot as plt
 import arviz as az
 import pandas
-import sunode.wrappers.as_theano as sun
-
+import sunode.wrappers.as_aesara as sun
 
 ## Generate Data
 from scipy.integrate import ode
@@ -18,8 +18,8 @@ def dX_dt(t, state,par):
     return np.array([ alpha*state[0] -   beta*state[0]*state[1],
                   -gamma*state[1] + delta*state[0]*state[1]])
 
-t = np.linspace(0, 24,  50)              # time
-X0 = np.array([10, 5])                    # initials conditions: 10 rabbits and 5 foxes
+t = np.linspace(0, 24, 100)              # time
+X0 = np.array([10, 5])                    # initials conditions: 5 rabbits and 3 foxes
 r = ode(dX_dt).set_integrator('dopri5')
 r.set_initial_value(X0, t[0])
 r.set_f_params((alpha,beta,gamma,delta))
@@ -34,8 +34,10 @@ for i, _t in enumerate(t):
 np.random.seed(0)
 yobs = X.T * np.random.lognormal(mean=0,sigma=0.1,size=X.T.shape)  #np.maximum(X.T + 2*np.random.randn(*X.T.shape),1)
 times = t
+print("Standard deviation of yobs")
 print(yobs.std(axis=0))
 yobs_norm = yobs / yobs.std(axis=0)
+# print(yobs_norm)
 
 
 
@@ -102,9 +104,10 @@ with model_sunode:
     start['xi'] = np.ones(start['pn'].shape).astype(int)
     start['y0'] = yobs_norm[0,:]
     start['y0_log__'] = np.log(start['y0'])
-
-    trace = pm.sample(4000, tune=2000, cores=2, start=start,random_seed=0,step_kwargs={'nuts':{'target_accept':0.95}})
-
+#     trace = pm.backends.load_trace('synthetic_ss_12param' + '.trace',model_sunode)
+#     trace = pm.sample(4000, tune=2000, cores=2, start=start,random_seed=0,step_kwargs={'nuts':{'target_accept':0.95}})
+#     trace = pm.sample(4000, tune=2000, cores=2, start=start,random_seed=10, nuts={'target_accept':0.95})
+    trace = pm.sample(4000, tune=2000, cores=2, start=start,random_seed=0, nuts={'target_accept':0.95})
     pm.backends.save_trace(trace,'synthetic_ss_12param' + '.trace',model_sunode)
 
 # If you want to plot it make sure you can display graphics when you ssh
